@@ -1,13 +1,10 @@
 #!/usr/bin/env python
-
+import sys, os
 import smtplib
-import os
 import subprocess
 import time
 import datetime
 from configuration import settings, sites
-from sys import platform as system_platform
-
 
 class Color(object):
     """
@@ -22,7 +19,7 @@ class Color(object):
     def __init__(self):
         # Check if the system is windows, as ANSI escape codes do not work there
         self.should_colorize = True
-        if system_platform == "win32":
+        if sys.platform == 'win32':
             self.should_colorize = False
 
     def red(self, string):
@@ -31,7 +28,7 @@ class Color(object):
         """
         if not self.should_colorize:
             return string
-        return "%s%s%s" % (self.RED, string, self.RESET)
+        return '%s%s%s' % (self.RED, string, self.RESET)
 
     def green(self, string):
         """
@@ -39,7 +36,7 @@ class Color(object):
         """
         if not self.should_colorize:
             return string
-        return "%s%s%s" % (self.GREEN, string, self.RESET)
+        return '%s%s%s' % (self.GREEN, string, self.RESET)
 
     def blue(self, string):
         """
@@ -47,7 +44,7 @@ class Color(object):
         """
         if not self.should_colorize:
             return string
-        return "%s%s%s" % (self.BLUE, string, self.RESET)
+        return '%s%s%s' % (self.BLUE, string, self.RESET)
 
     def yellow(self, string):
         """
@@ -55,7 +52,7 @@ class Color(object):
         """
         if not self.should_colorize:
             return string
-        return "%s%s%s" % (self.YELLOW, string, self.RESET)
+        return '%s%s%s' % (self.YELLOW, string, self.RESET)
 
 
 class UptimeLogger(object):
@@ -94,7 +91,7 @@ class UptimeLogger(object):
         if not self.was_up():
             return
         site_list = open(self.file_location, 'a')
-        site_list.write(self.hostname + "\n")
+        site_list.write(self.hostname + '\n')
         site_list.close()
 
     def mark_up(self):
@@ -133,8 +130,12 @@ class UptimeChecker(object):
         """
         Checks if the site is up and sets the class variables did_change and is_up
         """
+        if sys.platform == 'win32':
+            ping = 'ping -n 1 '
+        else:
+            ping = 'ping -c 1 '
         process = subprocess.Popen(
-            'ping -c 1 ' + self.hostname,
+            ping + self.hostname,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             shell=True
@@ -150,10 +151,10 @@ class UptimeChecker(object):
 
             if uptime_logger.was_up():
                 # The site is still up
-                print color.blue("Site %s is still up" % self.hostname)
+                print color.blue('Site %s is still up' % self.hostname)
             else:
                 # The site went from down to up
-                print color.green("Site %s went back up" % self.hostname)
+                print color.green('Site %s went back up' % self.hostname)
                 self.did_change = True
                 uptime_logger.mark_up()
         else:
@@ -161,45 +162,57 @@ class UptimeChecker(object):
             self.is_up = False
             if uptime_logger.was_up():
                 # Site went down
-                print color.red("Site %s went down" % self.hostname)
+                print color.red('Site %s went down' % self.hostname)
                 self.did_change = True
                 uptime_logger.mark_down()
             else:
                 # Site is still down
-                print color.yellow("Site %s is still down" % self.hostname)
+                print color.yellow('Site %s is still down' % self.hostname)
         return self.is_up
 
+def send_email(recipient, subject, body):
+    """
+    Sends an e-mail to the specified recipient.
+    """
+    sender = settings.get('monitor_email', None)
+    passwd = settings.get('monitor_password', None)
+    def_subject = settings.get('email_subject', None)
+    if not def_subject is None:
+        subject = def_subject
+    print 'Sending email to %s: %s' % (recipient, subject)
+    headers = ['From: ' + sender,
+               'Subject: ' + subject,
+               'To: ' + recipient,
+               'MIME-Version: 1.0',
+               'Content-Type: text/html']
+    headers = '\r\n'.join(headers)
+    server = settings.get('email_server', 'smtp.gmail.com')
+    port = settings.get('email_server_port', 587)
+    session = smtplib.SMTP(server, port)
+    session.ehlo()
+    session.starttls()
+    session.ehlo()
+    session.login(sender, passwd)
+    session.sendmail(sender, recipient, headers + '\r\n\r\n' + body)
+    session.quit()
+
 ts = time.time()
-st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-
-"""Sends an e-mail to the specified recipient."""
-sender = settings["monitor_email"]
-recipient = settings["recipient_email"]
-subject = settings["email_subject"]
-headers = ["From: " + sender,
-           "Subject: " + subject,
-           "To: " + recipient,
-           "MIME-Version: 1.0",
-           "Content-Type: text/html"]
-headers = "\r\n".join(headers)
-session = smtplib.SMTP(settings["monitor_server"], settings["monitor_server_port"])
-session.ehlo()
-session.starttls()
-session.ehlo()
-session.login(settings["monitor_email"], settings["monitor_password"])
-
+now = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
 for site in sites:
-    checker = UptimeChecker(site)
+    nicename = site[0]
+    hostname = site[1]
+    recipients = site[2]
+    checker = UptimeChecker(hostname)
     # The site status changed from it's last value, so send an email
     if checker.did_change:
         if checker.is_up:
             # The site went back up
-            body = "%s went back up at %s" % (site, st)
-            session.sendmail(sender, recipient, headers + "\r\n\r\n" + body)
+            subject = '%s up' % nicename
+            body = '%s went back up at %s' % (hostname, now)
         else:
             # The site went down
-            body = "%s went down at %s" % (site, st)
-            session.sendmail(sender, recipient, headers + "\r\n\r\n" + body)
-
-session.quit()
+            subject = '%s down' % nicename
+            body = '%s went down at %s' % (hostname, now)
+        for recipient in recipients:
+            send_email(recipient, subject, body)

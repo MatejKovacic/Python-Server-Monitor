@@ -12,12 +12,12 @@ You can add multiple sites to check every minute with the monitor.
 
 2. Add your site's to the list there. For example, the configuration for checking google and github would be:
 
-        sites = (
-            'google.com',
-            'github.com',
-        )
+        sites = [
+            ('Google', 'www.google.com', ['recipient1@acme.com', 'recipient2@acme.com']),
+            ('Yahoo', 'www.yahoo.com', ['recipient3@acme.com'])
+        ]
 
-    **Note:** Each site must have a comma after it
+    **Note:** Python syntax for arrays and tuples must be obeyed (watch for commas)!
 
 
 Configuration for Gmail (Easiest)
@@ -25,20 +25,15 @@ Configuration for Gmail (Easiest)
 
 Open the configuration.py file with your favorite text editor.
 
-1. Add the hostname or ip address and the recipient email
-
-        "recipient_email": 'recipient@yourdomain.com', # The email that the alerts will be sent to
-
-
-2. Add the Gmail address you would like to send the email from when your server goes down.
+1. Add the Gmail address you would like to send the email from when your server goes down.
 
         "monitor_email": 'your_gmail_username@gmail.com',
 
-3. Add the Gmail password that is associated with the above Gmail email address
+2. Add the Gmail password that is associated with the above Gmail email address
 
         "monitor_password": 'gmail password',
 
-4. Add script to crontab to run every x amount of minutes you would like to run it.
+3. Add script to crontab to run every x amount of minutes you would like to run it.
 
 
 Configuration for a custom email account
@@ -46,28 +41,23 @@ Configuration for a custom email account
 
 Open the configuration.py file with your favorite text editor.
 
-1. Add the hostname or ip address and the recipient email
-
-        "recipient_email": 'recipient@yourdomain.com', # The email that the alerts will be sent to
-
-
-2. Add the email address you would like to send the email from when your server goes down.
+1. Add the email address you would like to send the email from when your server goes down.
 
         "monitor_email": 'your_gmail_username@yourdomain.com',
 
-3. Add the email password that is associated with the above email address
+2. Add the email password that is associated with the above email address
 
         "monitor_password": 'email password',
 
-4. Set the email server (smtp) address to send the emails from
+3. Set the email server (smtp) address to send the emails from
 
-        "monitor_server": 'smtp.yourdomain.com',
+        "email_server": 'smtp.yourdomain.com',
 
-5. Set the email server port
+4. Set the email server port
 
-        "monitor_server_port": 587,
+        "email_server_port": 587,
 
-6. Add script to crontab to run every x amount of minutes you would like to run it.
+5. Add script to crontab to run every x amount of minutes you would like to run it.
 
 
 Optional Settings
